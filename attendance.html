@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Attendance System</title>
+    <script defer src="face-api.min.js"></script>
+    <script defer src="script.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <nav>
+        <a href="index.html">Register Student</a> |
+        <a href="attendance.html">Mark Attendance</a>
+    </nav>
+
+    <div class="container">
+        <h1>Face Recognition Attendance</h1>
+        <div id="video-container">
+            <video id="video" width="600" height="450" autoplay muted></video>
+        </div>
+        <p id="status">Initializing Scanner...</p>
+
+        <h3>Today's Attendance Log</h3>
+        <table border="1">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Date</th>
+                    <th>Time</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="attendanceLog"></tbody>
+        </table>
+    </div>
+</body>
+
+</html>

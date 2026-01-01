@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Registration - Face ID</title>
+  <script defer src="face-api.min.js"></script>
+  <script defer src="script.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <nav>
+    <a href="index.html">Register Student</a> |
+    <a href="attendance.html">Mark Attendance</a>
+  </nav>
+
+  <div class="container">
+    <h1>Register New Student</h1>
+    <div class="input-group">
+      <input type="text" id="studentName" placeholder="Enter Full Name">
+      <input type="text" id="rollNumber" placeholder="Enter Roll Number">
+    </div>
+
+    <div id="video-container">
+      <video id="video" width="600" height="450" autoplay muted></video>
+    </div>
+
+    <button id="registerBtn" onclick="registerStudent()">Capture & Register</button>
+    <p id="status">Loading AI Models...</p>
+
+    <h3>Registered Students</h3>
+    <table id="studentTable">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Roll</th>
+        </tr>
+      </thead>
+      <tbody id="studentList"></tbody>
+    </table>
+  </div>
+</body>
+
+</html>

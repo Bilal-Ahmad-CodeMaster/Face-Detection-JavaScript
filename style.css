@@ -1,0 +1,65 @@
+body {
+  font-family: sans-serif;
+  background: #f0f2f5;
+  text-align: center;
+}
+.container {
+  max-width: 800px;
+  margin: 20px auto;
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+#video-container {
+  position: relative;
+  display: inline-block;
+}
+canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+video {
+  border-radius: 8px;
+  background: #000;
+}
+.input-group {
+  margin-bottom: 15px;
+}
+input {
+  padding: 10px;
+  margin: 5px;
+  width: 200px;
+}
+button {
+  padding: 10px 20px;
+  background: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+button:hover {
+  background: #0056b3;
+}
+table {
+  width: 100%;
+  margin-top: 20px;
+  border-collapse: collapse;
+}
+th,
+td {
+  padding: 10px;
+  border: 1px solid #ddd;
+}
+nav {
+  background: #333;
+  padding: 10px;
+  margin-bottom: 20px;
+}
+nav a {
+  color: white;
+  margin: 0 15px;
+  text-decoration: none;
+}
