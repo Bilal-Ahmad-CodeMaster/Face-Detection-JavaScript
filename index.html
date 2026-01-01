@@ -3,6 +3,7 @@
 
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Registration - Face ID</title>
   <script defer src="face-api.min.js"></script>
   <script defer src="script.js"></script>
@@ -11,34 +12,46 @@
 
 <body>
   <nav>
-    <a href="index.html">Register Student</a> |
-    <a href="attendance.html">Mark Attendance</a>
+    <a href="index.html" class="nav-link">Registration</a>
+    <a href="attendance.html" class="nav-link">Scanner</a>
   </nav>
 
   <div class="container">
-    <h1>Register New Student</h1>
+    <h1>Register Student</h1>
+
     <div class="input-group">
-      <input type="text" id="studentName" placeholder="Enter Full Name">
-      <input type="text" id="rollNumber" placeholder="Enter Roll Number">
+      <input type="text" id="studentName" placeholder="Full Name" autocomplete="off">
+      <input type="text" id="rollNumber" placeholder="Roll Number" autocomplete="off">
     </div>
 
     <div id="video-container">
-      <video id="video" width="600" height="450" autoplay muted></video>
+      <video id="video" autoplay muted playsinline></video>
     </div>
 
-    <button id="registerBtn" onclick="registerStudent()">Capture & Register</button>
-    <p id="status">Loading AI Models...</p>
+    <button id="registerBtn" onclick="registerStudent()">Capture & Save</button>
 
-    <h3>Registered Students</h3>
-    <table id="studentTable">
+    <p id="status">Initializing AI...</p>
+
+    <div class="list-header">
+      <h3>Database</h3>
+
+    </div>
+
+    <div class="table-wrapper">
+      <table>
+        <thead>
       <thead>
         <tr>
           <th>Name</th>
-          <th>Roll</th>
+          <th>Roll Number</th>
+          <th>Action</th>
         </tr>
       </thead>
-      <tbody id="studentList"></tbody>
-    </table>
+        </thead>
+        <tbody id="studentList">
+        </tbody>
+      </table>
+    </div>
   </div>
 </body>
 

@@ -1,7 +1,24 @@
 const video = document.getElementById("video");
 const status = document.getElementById("status");
 
-// Load models based on your folder structure
+// Handle Active Tab based on URL
+function setActiveTab() {
+  const currentPath = window.location.pathname;
+  const navLinks = document.querySelectorAll("nav a");
+  navLinks.forEach((link) => {
+    const linkPath = link.getAttribute("href");
+    if (
+      currentPath.endsWith(linkPath) ||
+      (currentPath.endsWith("/") && linkPath === "index.html")
+    ) {
+      link.classList.add("active");
+    } else {
+      link.classList.remove("active");
+    }
+  });
+}
+
+// Load models
 Promise.all([
   faceapi.nets.tinyFaceDetector.loadFromUri("models"),
   faceapi.nets.faceLandmark68Net.loadFromUri("models"),
@@ -9,14 +26,12 @@ Promise.all([
 ]).then(initSystem);
 
 async function initSystem() {
-  status.innerText = "Models Loaded. Starting Camera...";
-  startVideo();
-
-  if (document.getElementById("studentList")) {
-    renderStudentList();
-  }
-
+  setActiveTab();
+  status.innerText = "AI Ready. Starting Camera...";
+  if (video) startVideo();
+  if (document.getElementById("studentList")) renderStudentList();
   if (document.getElementById("attendanceLog")) {
+    renderAttendanceLog();
     startAttendanceScanner();
   }
 }
@@ -32,133 +47,158 @@ function startVideo() {
 
 // --- REGISTRATION LOGIC ---
 async function registerStudent() {
-  const name = document.getElementById("studentName").value;
-  const roll = document.getElementById("rollNumber").value;
+  if (video.videoWidth === 0) return alert("Camera not ready.");
 
-  if (!name || !roll) return alert("Enter Name and Roll Number");
+  const nameInput = document.getElementById("studentName");
+  const rollInput = document.getElementById("rollNumber");
+  const name = nameInput.value.trim();
+  const roll = rollInput.value.trim();
 
-  status.innerText = "Capturing Face... Please keep still";
+  if (!name || !roll) return alert("Enter Name and Roll Number.");
+
+  let students = JSON.parse(localStorage.getItem("students") || "[]");
+
+  // 1. Check Unique ID
+  if (students.some((s) => s.roll === roll)) {
+    status.innerText = "Error: Roll Number already exists.";
+    status.style.color = "#ef4444";
+    return;
+  }
+
+  status.innerText = "Scanning face for uniqueness...";
 
   const detection = await faceapi
     .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
     .withFaceLandmarks()
     .withFaceDescriptor();
 
-  if (detection) {
-    const studentData = {
-      name: name,
-      roll: roll,
-      descriptor: Array.from(detection.descriptor), // Must convert to array for JSON
-    };
+  if (!detection) return alert("Face not detected. Look at the camera.");
 
-    let students = JSON.parse(localStorage.getItem("students") || "[]");
-    students.push(studentData);
-    localStorage.setItem("students", JSON.stringify(students));
+  // 2. Check Unique Face
+  if (students.length > 0) {
+    const labeledDescriptors = students.map(
+      (s) =>
+        new faceapi.LabeledFaceDescriptors(s.name, [
+          new Float32Array(s.descriptor),
+        ])
+    );
+    const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
+    const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
 
-    status.innerText = `Registered ${name} successfully!`;
-    renderStudentList();
-  } else {
-    alert("Face not detected. Try again.");
+    if (bestMatch.label !== "unknown") {
+      status.innerText = `Error: User already registered as ${bestMatch.label}`;
+      status.style.color = "#ef4444";
+      return;
+    }
   }
+
+  // Save new user
+  students.push({ name, roll, descriptor: Array.from(detection.descriptor) });
+  localStorage.setItem("students", JSON.stringify(students));
+
+  status.innerText = `Registered ${name} successfully!`;
+  status.style.color = "#22c55e";
+  nameInput.value = "";
+  rollInput.value = "";
+  renderStudentList();
 }
 
 function renderStudentList() {
   const list = document.getElementById("studentList");
+  if (!list) return;
   const students = JSON.parse(localStorage.getItem("students") || "[]");
   list.innerHTML = students
-    .map((s) => `<tr><td>${s.name}</td><td>${s.roll}</td></tr>`)
+    .map(
+      (s) => `
+    <tr>
+      <td>${s.name}</td>
+      <td>${s.roll}</td>
+      <td style="text-align:right">
+        <button onclick="deleteStudent('${s.roll}')" class="btn-small">Delete</button>
+      </td>
+    </tr>`
+    )
     .join("");
 }
+
+function deleteStudent(roll) {
+  if (confirm("Remove this user?")) {
+    let students = JSON.parse(localStorage.getItem("students") || "[]");
+    localStorage.setItem(
+      "students",
+      JSON.stringify(students.filter((s) => s.roll !== roll))
+    );
+    renderStudentList();
+  }
+}
+
+// --- ATTENDANCE LOGIC ---
 async function startAttendanceScanner() {
   const students = JSON.parse(localStorage.getItem("students") || "[]");
-  if (students.length === 0) {
-    status.innerText = "No students registered. Please register first.";
-    return;
-  }
+  if (students.length === 0)
+    return (status.innerText = "No users in database.");
 
-  // Convert stored data back into FaceDescriptors
-  const labeledDescriptors = students.map((s) => {
-    return new faceapi.LabeledFaceDescriptors(s.name, [
-      new Float32Array(s.descriptor),
-    ]);
-  });
-
+  const labeledDescriptors = students.map(
+    (s) =>
+      new faceapi.LabeledFaceDescriptors(s.name, [
+        new Float32Array(s.descriptor),
+      ])
+  );
   const faceMatcher = new faceapi.FaceMatcher(labeledDescriptors, 0.6);
 
-  // FIXED: Wait for video to start playing before creating canvas
   video.addEventListener("play", () => {
-    status.innerText = "Scanner Active";
-
-    // Create canvas and match it to video dimensions
     const canvas = faceapi.createCanvasFromMedia(video);
     document.getElementById("video-container").append(canvas);
-
-    const displaySize = { width: video.width, height: video.height };
+    const displaySize = {
+      width: video.offsetWidth,
+      height: video.offsetHeight,
+    };
     faceapi.matchDimensions(canvas, displaySize);
 
     setInterval(async () => {
+      if (video.videoWidth === 0) return;
       const detections = await faceapi
         .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
         .withFaceLandmarks()
         .withFaceDescriptors();
-
-      const resizedDetections = faceapi.resizeResults(detections, displaySize);
-
-      // Clear previous drawings
+      const resized = faceapi.resizeResults(detections, displaySize);
       canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
 
-      resizedDetections.forEach((detection) => {
-        const bestMatch = faceMatcher.findBestMatch(detection.descriptor);
-        const box = detection.detection.box;
-
-        // Draw detection box
-        const drawBox = new faceapi.draw.DrawBox(box, {
-          label: bestMatch.toString(),
-        });
-        drawBox.draw(canvas);
-
-        // If match found, mark attendance
-        if (bestMatch.label !== "unknown") {
-          markAttendance(bestMatch.label);
-        }
+      resized.forEach((d) => {
+        const match = faceMatcher.findBestMatch(d.descriptor);
+        new faceapi.draw.DrawBox(d.detection.box, {
+          label: match.toString(),
+        }).draw(canvas);
+        if (match.label !== "unknown") markAttendance(match.label);
       });
-    }, 1000); // Scans every 1 second
+    }, 1000);
   });
-
-  // Fallback: If video is already playing but event hasn't fired
-  if (!video.paused) {
-    video.dispatchEvent(new Event("play"));
-  }
 }
 
 function markAttendance(name) {
-  let attendance = JSON.parse(localStorage.getItem("attendance_log") || "[]");
+  let log = JSON.parse(localStorage.getItem("attendance_log") || "[]");
   const today = new Date().toLocaleDateString();
-  const time = new Date().toLocaleTimeString();
-
-  // Prevent double attendance for same person on the same day
-  if (
-    !attendance.find((entry) => entry.name === name && entry.date === today)
-  ) {
-    attendance.push({ name, date: today, time });
-    localStorage.setItem("attendance_log", JSON.stringify(attendance));
+  if (!log.find((e) => e.name === name && e.date === today)) {
+    log.push({ name, date: today, time: new Date().toLocaleTimeString() });
+    localStorage.setItem("attendance_log", JSON.stringify(log));
     renderAttendanceLog();
   }
 }
 
 function renderAttendanceLog() {
   const logTable = document.getElementById("attendanceLog");
-  const attendance = JSON.parse(localStorage.getItem("attendance_log") || "[]");
-  logTable.innerHTML = attendance
+  if (!logTable) return;
+  const log = JSON.parse(localStorage.getItem("attendance_log") || "[]");
+  logTable.innerHTML = [...log]
+    .reverse()
     .map(
       (a) => `
-        <tr>
-            <td>${a.name}</td>
-            <td>${a.date}</td>
-            <td>${a.time}</td>
-            <td style="color:green">Present</td>
-        </tr>
-    `
+    <tr>
+      <td>${a.name}</td>
+      <td>${a.date}</td>
+      <td>${a.time}</td>
+      <td style="color:#22c55e; font-weight:bold">Present</td>
+    </tr>`
     )
     .join("");
 }
